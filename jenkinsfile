@@ -1,0 +1,34 @@
+pipeline {
+    def dockerRun = 'docker container run -p 8081:8080 -d 867681379442.dkr.ecr.us-east-1.amazonaws.com/upgrad'
+    agent any
+    stages {
+        stage('Clone') {
+            steps {
+                // Get some code from a GitHub repository
+                git 'https://github.com/AmarBabuRao/nodeapp.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh "docker build -t upgrad ."
+            }
+        }
+
+        stage ('Push') {
+            steps {
+                sh "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 867681379442.dkr.ecr.us-east-1.amazonaws.com"
+                sh "docker tag upgrad:latest 867681379442.dkr.ecr.us-east-1.amazonaws.com/upgrad:latest"
+                sh "docker push 867681379442.dkr.ecr.us-east-1.amazonaws.com/upgrad:latest"
+            }
+        }
+        stage ('Container') {
+            steps {
+                
+                sshagent(['2604ab73-c949-4c1d-a7dc-17ee106fe4d6']) {
+                    sh 'ssh -o StrictHostKeyChecking=no ec2-user@10.0.14.63 ${dockerRun}'
+                }
+            }
+            
+        }
+    }
+}
